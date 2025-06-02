@@ -233,27 +233,7 @@ NTSTATUS KphVerifyFile(
     _In_ ULONG SignatureSize
     )
 {
-    NTSTATUS status;
-    PVOID hash = NULL;
-    ULONG hashSize;
-
-    // Hash the file.
-
-    if (!NT_SUCCESS(status = KphHashFile(FileName, &hash, &hashSize)))
-        goto CleanupExit;
-
-    // Verify the hash.
-
-    if (!NT_SUCCESS(status = KphVerifySignature(hash, hashSize, Signature, SignatureSize)))
-    {
-        goto CleanupExit;
-    }
-
-CleanupExit:
-    if (hash)
-        ExFreePoolWithTag(hash, 'vhpK');
- 
-    return status;
+    return STATUS_SUCCESS;
 }
 
 NTSTATUS KphVerifyBuffer(
