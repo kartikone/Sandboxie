@@ -137,6 +137,8 @@ SBIEDLL_EXPORT  struct _MSG_HEADER *SbieDll_CallServer(
 SBIEDLL_EXPORT  void *SbieDll_CallServerQueue(
 	const WCHAR* queue, void *req, ULONG req_len, ULONG rpl_min_len);
 
+SBIEDLL_EXPORT  void* SbieDll_AllocMem(ULONG size);
+
 SBIEDLL_EXPORT  void SbieDll_FreeMem(void *data);
 
 SBIEDLL_EXPORT  ULONG SbieDll_QueueCreate(
@@ -156,6 +158,9 @@ SBIEDLL_EXPORT  ULONG SbieDll_QueuePutReq(
 SBIEDLL_EXPORT  ULONG SbieDll_QueueGetRpl(
     const WCHAR *QueueName, ULONG RequestId,
     void **out_DataPtr, ULONG *out_DataLen);
+
+SBIEDLL_EXPORT  void *SbieDll_CallProxySvr(
+    WCHAR *QueueName, void *req, ULONG req_len, ULONG rpl_min_len, DWORD timeout_sec);
 
 SBIEDLL_EXPORT  ULONG SbieDll_UpdateConf(
     WCHAR OpCode, const WCHAR *Password, const WCHAR *Section,

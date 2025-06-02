@@ -225,12 +225,19 @@ void CPopUpWindow::AddLogMessage(quint32 MsgCode, const QStringList& MsgData, qu
 
 void CPopUpWindow::ReloadHiddenMessages()
 {
+	QStringList HiddenMessages;
 	m_HiddenMessages.clear();
 
-	if (theAPI->GetUserSettings() == NULL)
+	// Read configuration from Global settings
+	if (theAPI->GetGlobalSettings() != NULL)
+		HiddenMessages += theAPI->GetGlobalSettings()->GetTextList("SbieCtrl_HideMessage", true);
+	// User's settings override Global settings
+	if (theAPI->GetUserSettings() != NULL)
+		HiddenMessages += theAPI->GetUserSettings()->GetTextList("SbieCtrl_HideMessage", true);
+	// If no settings get out
+	if (HiddenMessages.size() == 0)
 		return;
 
-	QStringList HiddenMessages = theAPI->GetUserSettings()->GetTextList("SbieCtrl_HideMessage", true);
 	foreach(const QString& HiddenMessage, HiddenMessages)
 	{
 		if (HiddenMessage == "*") {
@@ -248,7 +255,7 @@ void CPopUpWindow::ReloadHiddenMessages()
 
 void CPopUpWindow::OnDismissMessage()
 {
-	CPopUpMessage* pEntry = qobject_cast<CPopUpMessage*>(sender());
+	CPopUpEntry* pEntry = qobject_cast<CPopUpEntry*>(sender());
 	RemoveEntry(pEntry);
 }
 
@@ -305,7 +312,7 @@ void CPopUpWindow::AddUserPrompt(quint32 RequestId, const QVariantMap& Data, qui
 	if (retval != -1)
 	{
 		Result["retval"] = retval;
-		theAPI->SendReplyData(RequestId, Result);
+		theAPI->SendQueueRpl(RequestId, Result);
 		return;
 	}
 
@@ -368,7 +375,7 @@ void CPopUpWindow::SendPromptResult(CPopUpPrompt* pEntry, int retval)
 		return;
 
 	pEntry->m_Result["retval"] = retval;
-	theAPI->SendReplyData(pEntry->m_RequestId, pEntry->m_Result);
+	theAPI->SendQueueRpl(pEntry->m_RequestId, pEntry->m_Result);
 
 	if (pEntry->m_pRemember->isChecked())
 		pEntry->m_pProcess.objectCast<CSbieProcess>()->SetRememberedAction(pEntry->m_Result["id"].toInt(), retval);

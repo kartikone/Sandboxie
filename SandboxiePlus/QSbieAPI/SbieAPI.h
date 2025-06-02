@@ -82,22 +82,15 @@ public:
 	virtual QString			GetBoxedPath(CSandBox* pBox, const QString& Path, const QString& Snapshot = QString());
 	virtual QString			GetRealPath(CSandBox* pBox, const QString& Path);
 
-	enum ESetMode
-	{
-		eIniUpdate = 0,
-		eIniAppend,
-		eIniInsert,
-		eIniDelete
-	};
-
 	// Config
 	virtual SB_STATUS		ReloadConfig(bool ReconfigureDrv = false);
 	virtual SB_STATUS		ReloadCert();
 	virtual void			CommitIniChanges();
-	virtual QString			SbieIniGet(const QString& Section, const QString& Setting, quint32 Index = 0, qint32* ErrCode = NULL);
+	virtual QString			SbieIniGet(const QString& Section, const QString& Setting, quint32 Index = 0, qint32* ErrCode = NULL, quint32* pType = NULL);
 	virtual QString			SbieIniGet2(const QString& Section, const QString& Setting, quint32 Index = 0, bool bWithGlobal = false, bool bNoExpand = true, bool withTemplates = false);
 	virtual QString			SbieIniGetEx(const QString& Section, const QString& Setting);
-	virtual SB_STATUS		SbieIniSet(const QString& Section, const QString& Setting, const QString& Value, ESetMode Mode = eIniUpdate, bool bRefresh = true);
+	virtual SB_STATUS		SbieIniSet(const QString& Section, const QString& Setting, const QString& Value, CSbieIni::ESetMode Mode = CSbieIni::eIniUpdate, bool bRefresh = true);
+	virtual SB_STATUS		SbieIniSetDrv(const QString& Section, const QString& Setting, const QString& Value, CSbieIni::ESetMode Mode = CSbieIni::eIniUpdate);
 	virtual bool			IsBox(const QString& BoxName, bool& bIsEnabled);
 	virtual QSharedPointer<CSbieIni> GetGlobalSettings() const { return m_pGlobalSection; }
 	virtual QSharedPointer<CSbieIni> GetUserSettings() const { return m_pUserSection; }
@@ -168,6 +161,11 @@ public:
 	virtual SB_STATUS		SetSecureParam(const QString& Name, const void* data, size_t size);
 	virtual SB_STATUS		GetSecureParam(const QString& Name, void* data, size_t size, quint32* size_out = NULL, bool bVerify = false);
 
+	virtual bool			TestSignature(const QByteArray& Data, const QByteArray& Signature);
+
+	virtual SB_STATUS		SetDatFile(const QString& FileName, const QByteArray& Data);
+	//virtual SB_RESULT(QByteArray) GetDatFile(const QString& FileName);
+
 
 	enum ESbieQueuedRequests
 	{
@@ -182,7 +180,7 @@ public:
 	virtual SB_RESULT(int)	RunUpdateUtility(const QStringList& Params, quint32 Elevate = 0, bool Wait = false);
 
 public slots:
-	virtual void			SendReplyData(quint32 RequestId, const QVariantMap& Result);
+	virtual void			SendQueueRpl(quint32 RequestId, const QVariantMap& Result);
 
 signals:
 	void					StatusChanged();
@@ -220,7 +218,7 @@ protected:
 
 	virtual bool			HasProcesses(const QString& BoxName);
 
-	virtual bool			GetQueue();
+	virtual bool			GetQueueReq();
 	virtual bool			GetLog();
 	virtual bool			GetMonitor();
 
@@ -289,11 +287,14 @@ public:
 	struct SScopedVoid {
 		~SScopedVoid()					{ if (ptr) free(ptr); }
 
-		inline void Assign(void* p)		{Q_ASSERT(!ptr); ptr = p;}
+		inline void Assign(void* p, size_t s) { Q_ASSERT(!ptr); ptr = p; size = s; }
+
+		inline size_t Size()			{return size;}
 
 	protected:
-		SScopedVoid(void* p) : ptr(p)	{}
+		SScopedVoid(void* p) : ptr(p), size(0) {}
 		void* ptr;
+		size_t size;
 	};
 
 	template <typename T>

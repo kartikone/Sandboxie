@@ -52,12 +52,15 @@ public:
 	static bool AddBrowserIcon();
 
 	static bool ApplyCertificate(const QByteArray &Certificate, QWidget* widget);
-
 	static void LoadCertificate(QString CertPath = QString());
+	static bool	TryRefreshCert(QWidget* parent, QObject* receiver, const char* member);
+	static bool	CertRefreshRequired();
 
 	static QString GetCertType();
 	static QColor GetCertColor();
 	static QString GetCertLevel();
+
+	static void StartEval(QWidget* parent, QObject* receiver, const char* member);
 
 signals:
 	void OptionsChanged(bool bRebuildUI = false);
@@ -67,7 +70,7 @@ public slots:
 	void ok();
 	void apply();
 
-	void showTab(const QString& Name, bool bExclusive = false);
+	void showTab(const QString& Name, bool bExclusive = false, bool bExec = false);
 
 private slots:
 	void OnTab();
@@ -102,6 +105,13 @@ private slots:
 
 	void OnRamDiskChange();
 
+	void OnImportBox();
+	void OnMakeBox();
+	void OnAddRoot();
+	void OnRemoveBox();
+
+	void OnImportChanged() { m_ImportChanged = true; OnOptChanged(); }
+
 	void OnProtectionChange();
 	void OnSetPassword();
 
@@ -110,6 +120,7 @@ private slots:
 	void OnAddWarnFolder();
 	void OnDelWarnProg();
 
+	void OnMoTWChange();
 	void OnVolumeChanged();
 	void UpdateDrives();
 
@@ -139,6 +150,7 @@ private slots:
 	void OnCertData(const QByteArray& Certificate, const QVariantMap& Params);
 	void ApplyCert();
 	void UpdateUpdater();
+	void OnStartEval();
 
 	void GetUpdates();
 	void OnUpdateData(const QVariantMap& Data, const QVariantMap& Params);
@@ -179,6 +191,7 @@ protected:
 	bool	m_CompatChanged;
 	bool	m_RunChanged;
 	bool	m_SkipUACChanged;
+	bool	m_ImportChanged;
 	bool	m_ProtectionChanged;
 	bool	m_GeneralChanged;
 	bool	m_FeaturesChanged;
@@ -192,6 +205,8 @@ private:
 	void WriteTextList(const QString& Setting, const QStringList& List);
 
 	Ui::SettingsWindow ui;
+
+	class CCodeEdit* m_pCodeEdit;
 };
 
 QVariantMap GetRunEntry(const QString& sEntry);
@@ -208,3 +223,6 @@ extern QByteArray g_Certificate;
 #include "..\..\Sandboxie\core\drv\verify.h"
 
 extern SCertInfo g_CertInfo;
+
+#define EVAL_MAX 3		// for UI only actual limits enforced on server
+#define EVAL_DAYS 10	

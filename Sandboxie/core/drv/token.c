@@ -164,8 +164,16 @@ UCHAR SandboxieAllSid[16] = { // S-1-5-100-0
     1,                                      // Revision
     2,                                      // SubAuthorityCount
     0,0,0,0,0,5, // SECURITY_NT_AUTHORITY   // IdentifierAuthority
-    100,0,0,0,                              // SubAuthority[0] = SBIE_RID
+    SBIE_RID,0,0,0,                         // SubAuthority[0] = SBIE_RID
     0,0,0,0                                 // SubAuthority[1] = 0
+};
+
+UCHAR SandboxieAdminSid[16] = { // S-1-5-100-544
+    1,                                      // Revision
+    2,                                      // SubAuthorityCount
+    0,0,0,0,0,5, // SECURITY_NT_AUTHORITY   // IdentifierAuthority
+    SBIE_RID,0,0,0,                         // SubAuthority[0]
+    0x20, 0x02, 0x00, 0x00                  // SubAuthority[1] = 544 (0x220 in little endian = 0x20 0x02 0x00 0x00)
 };
 
 static UCHAR SystemLogonSid[12] = {
@@ -1290,6 +1298,7 @@ _FX NTSTATUS Token_RestrictHelper2(
         return STATUS_SUCCESS;
 
     BOOLEAN NoUntrustedToken = Conf_Get_Boolean(proc->box->name, L"NoUntrustedToken", 0, FALSE);
+    BOOLEAN OpenWndStation = Conf_Get_Boolean(proc->box->name, L"OpenWndStation", 0, FALSE);
 
     label = (ULONG)(ULONG_PTR)Token_Query(
         TokenObject, TokenIntegrityLevel, proc->box->session_id);
@@ -1316,7 +1325,7 @@ _FX NTSTATUS Token_RestrictHelper2(
         LabelSid[1] = 0x10000000;
         // debug tip. You can change the sandboxed process's integrity level below
         //LabelSid[2] = SECURITY_MANDATORY_HIGH_RID;
-        if(NoUntrustedToken)
+        if(NoUntrustedToken || OpenWndStation)
             LabelSid[2] = SECURITY_MANDATORY_LOW_RID;
         else
             LabelSid[2] = SECURITY_MANDATORY_UNTRUSTED_RID;
@@ -1392,6 +1401,7 @@ _FX void *Token_RestrictHelper3(
 		
         BOOLEAN KeepUserGroup = Conf_Get_Boolean(proc->box->name, L"KeepUserGroup", 0, FALSE);
         BOOLEAN KeepLogonSession = Conf_Get_Boolean(proc->box->name, L"KeepLogonSession", 0, FALSE);
+        BOOLEAN OpenWndStation = Conf_Get_Boolean(proc->box->name, L"OpenWndStation", 0, FALSE);
 
         n = 0;
 
@@ -1400,7 +1410,7 @@ _FX void *Token_RestrictHelper3(
             if (Groups->Groups[i].Attributes & SE_GROUP_INTEGRITY)
                 continue;
 
-            if (KeepLogonSession && (Groups->Groups[i].Attributes & SE_GROUP_LOGON_ID))
+            if ((KeepLogonSession || OpenWndStation) && (Groups->Groups[i].Attributes & SE_GROUP_LOGON_ID))
                 continue;
 
             if (RtlEqualSid(Groups->Groups[i].Sid, UserSid)) {
@@ -2005,7 +2015,7 @@ _FX NTSTATUS Token_Api_Filter(PROCESS* proc, ULONG64* parms)
     ProbeForWrite(pHandle, sizeof(HANDLE), sizeof(HANDLE));
 
     proc = Process_Find(ProcessId, &irql);
-    if (! proc) {
+    if (!proc || proc->terminated) {
         ExReleaseResourceLite(Process_ListLock);
         KeLowerIrql(irql);
         return STATUS_INVALID_CID;
@@ -2250,6 +2260,7 @@ _FX void* Token_CreateToken(void* TokenObject, PROCESS* proc)
         if (!Conf_Get_Boolean(proc->box->name, L"UnstrippedToken", 0, FALSE))
         {
             BOOLEAN NoUntrustedToken = Conf_Get_Boolean(proc->box->name, L"NoUntrustedToken", 0, FALSE);
+            BOOLEAN OpenWndStation = Conf_Get_Boolean(proc->box->name, L"OpenWndStation", 0, FALSE);
             BOOLEAN KeepUserGroup = Conf_Get_Boolean(proc->box->name, L"KeepUserGroup", 0, FALSE);
             BOOLEAN KeepLogonSession = Conf_Get_Boolean(proc->box->name, L"KeepLogonSession", 0, FALSE);
 
@@ -2257,7 +2268,7 @@ _FX void* Token_CreateToken(void* TokenObject, PROCESS* proc)
 
                 if (LocalGroups->Groups[i].Attributes & SE_GROUP_INTEGRITY) {
                     if (!Conf_Get_Boolean(proc->box->name, L"KeepTokenIntegrity", 0, FALSE)) {
-                        if(NoUntrustedToken)
+                        if(NoUntrustedToken || OpenWndStation)
                             *RtlSubAuthoritySid(LocalGroups->Groups[i].Sid, 0) = SECURITY_MANDATORY_LOW_RID;
                         else
                             *RtlSubAuthoritySid(LocalGroups->Groups[i].Sid, 0) = SECURITY_MANDATORY_UNTRUSTED_RID;
